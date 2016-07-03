@@ -22,41 +22,10 @@ static ssize_t readall(int fd, void *buf, size_t count)
 	return got;
 }
 
-static int copy_init(struct zstream *z)
-{
-	return 0;
-}
-
+#ifdef USE_ZLIB
 static int gzip_init(struct zstream *z)
 {
 	z->gzip = (void*)0;
-	return 0;
-}
-
-static int bzip_init(struct zstream *z)
-{
-	z->bz.f = (void*)0;
-	z->bz.eof = 1;
-	z->bz.error = 0;
-	return 0;
-}
-
-static int xz_init(struct zstream *z)
-{
-	lzma_stream tmp = LZMA_STREAM_INIT;
-	z->xz.eof = 1;
-	z->xz.stream = tmp;
-	z->xz.bufsize = 4096;
-	z->xz.inbuf = malloc(z->xz.bufsize);
-	if(!z->xz.inbuf) return -1;
-	z->xz.outbuf = malloc(z->xz.bufsize);
-	if(!z->xz.outbuf) return -1;
-	return 0;
-}
-
-static int copy_open(struct zstream *z, int fd, char *mode)
-{
-	z->copy.fd = fd;
 	return 0;
 }
 
@@ -66,6 +35,33 @@ static int gzip_open(struct zstream *z, int fd, char *mode)
 	if(!z->gzip) {
 		return -1;
 	}
+	return 0;
+}
+
+static ssize_t gzip_read(struct zstream *z, void *buf, size_t size)
+{
+	return gzread(z->gzip, buf, size);
+}
+
+static ssize_t gzip_write(struct zstream *z, void *buf, size_t count)
+{
+	return gzwrite(z->gzip, buf, count);
+}
+
+static int gzip_close(struct zstream *z)
+{
+	int rc = gzclose(z->gzip);
+	z->gzip = (void*)0;
+	return rc;
+}
+#endif
+
+#ifdef USE_BZIP2
+static int bzip_init(struct zstream *z)
+{
+	z->bz.f = (void*)0;
+	z->bz.eof = 1;
+	z->bz.error = 0;
 	return 0;
 }
 
@@ -95,6 +91,47 @@ static int bzip_open(struct zstream *z, int fd, char *mode)
 	return -1;
 }
 
+static ssize_t bzip_read(struct zstream *z, void *buf, size_t size)
+{
+	int n;
+
+	if(z->bz.eof) return 0;
+
+	n = BZ2_bzRead(&z->bz.error, z->bz.f, buf, size);
+	if(z->bz.error == BZ_STREAM_END) z->bz.eof = 1;
+	if (z->bz.error == BZ_OK || z->bz.error == BZ_STREAM_END) {
+		return n;
+	}
+	return -1;
+}
+
+static ssize_t bzip_write(struct zstream *z, void *buf, size_t count)
+{
+	return -1;
+}
+
+static int bzip_close(struct zstream *z)
+{
+	BZ2_bzReadClose(&z->bz.error, z->bz.f);
+	z->bz.f = (void*)0;
+	return z->bz.error;
+}
+#endif
+
+#ifdef USE_XZ
+static int xz_init(struct zstream *z)
+{
+	lzma_stream tmp = LZMA_STREAM_INIT;
+	z->xz.eof = 1;
+	z->xz.stream = tmp;
+	z->xz.bufsize = 4096;
+	z->xz.inbuf = malloc(z->xz.bufsize);
+	if(!z->xz.inbuf) return -1;
+	z->xz.outbuf = malloc(z->xz.bufsize);
+	if(!z->xz.outbuf) return -1;
+	return 0;
+}
+
 static int xz_open(struct zstream *z, int fd, char *mode)
 {
 	lzma_ret ret;
@@ -119,30 +156,6 @@ static int xz_open(struct zstream *z, int fd, char *mode)
 		return -1;
 	}
 
-	return -1;
-}
-
-static ssize_t copy_read(struct zstream *z, void *buf, size_t size)
-{
-	return read(z->copy.fd, buf, size);
-}
-
-static ssize_t gzip_read(struct zstream *z, void *buf, size_t size)
-{
-	return gzread(z->gzip, buf, size);
-}
-
-static ssize_t bzip_read(struct zstream *z, void *buf, size_t size)
-{
-	int n;
-
-	if(z->bz.eof) return 0;
-
-	n = BZ2_bzRead(&z->bz.error, z->bz.f, buf, size);
-	if(z->bz.error == BZ_STREAM_END) z->bz.eof = 1;
-	if (z->bz.error == BZ_OK || z->bz.error == BZ_STREAM_END) {
-		return n;
-	}
 	return -1;
 }
 
@@ -190,44 +203,9 @@ static ssize_t xz_read(struct zstream *z, void *buf, size_t size)
 	return 0;
 }
 
-static ssize_t copy_write(struct zstream *z, void *buf, size_t count)
-{
-	return write(z->copy.fd, buf, count);
-}
-
-static ssize_t gzip_write(struct zstream *z, void *buf, size_t count)
-{
-	return gzwrite(z->gzip, buf, count);
-}
-
 static ssize_t xz_write(struct zstream *z, void *buf, size_t count)
 {
 	return -1;
-}
-
-static ssize_t bzip_write(struct zstream *z, void *buf, size_t count)
-{
-	return -1;
-}
-
-static int copy_close(struct zstream *z)
-{
-	int rc = close(z->copy.fd);
-	return rc;
-}
-
-static int gzip_close(struct zstream *z)
-{
-	int rc = gzclose(z->gzip);
-	z->gzip = (void*)0;
-	return rc;
-}
-
-static int bzip_close(struct zstream *z)
-{
-	BZ2_bzReadClose(&z->bz.error, z->bz.f);
-	z->bz.f = (void*)0;
-	return z->bz.error;
 }
 
 static int xz_close(struct zstream *z)
@@ -235,6 +213,34 @@ static int xz_close(struct zstream *z)
 	int rc = close(z->xz.fd);
 	z->xz.fd = -1;
 	lzma_end(&z->xz.stream);
+	return rc;
+}
+#endif
+
+static int copy_init(struct zstream *z)
+{
+	return 0;
+}
+
+static int copy_open(struct zstream *z, int fd, char *mode)
+{
+	z->copy.fd = fd;
+	return 0;
+}
+
+static ssize_t copy_read(struct zstream *z, void *buf, size_t size)
+{
+	return read(z->copy.fd, buf, size);
+}
+
+static ssize_t copy_write(struct zstream *z, void *buf, size_t count)
+{
+	return write(z->copy.fd, buf, count);
+}
+
+static int copy_close(struct zstream *z)
+{
+	int rc = close(z->copy.fd);
 	return rc;
 }
 
@@ -248,6 +254,7 @@ int zstream(struct zstream *z, const char *codec)
 		z->close = copy_close;
 		return 0;
 	}
+#ifdef USE_ZLIB
 	if(!strcmp(codec, "gzip")) {
 		z->init = gzip_init;
 		z->open = gzip_open;
@@ -256,6 +263,8 @@ int zstream(struct zstream *z, const char *codec)
 		z->close = gzip_close;
 		return 0;
 	}
+#endif
+#ifdef USE_XZ
 	if(!strcmp(codec, "xz")) {
 		z->init = xz_init;
 		z->open = xz_open;
@@ -264,6 +273,8 @@ int zstream(struct zstream *z, const char *codec)
 		z->close = xz_close;
 		return 0;
 	}
+#endif
+#ifdef USE_BZIP2
 	if( (!strcmp(codec, "bzip2")) || (!strcmp(codec, "bz2")) ) {
 		z->init = bzip_init;
 		z->open = bzip_open;
@@ -272,6 +283,7 @@ int zstream(struct zstream *z, const char *codec)
 		z->close = bzip_close;
 		return 0;
 	}
+#endif
 	return -1;
 }
 
