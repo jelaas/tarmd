@@ -55,7 +55,7 @@ struct {
 	char *sha;
 	char *ofile, *ofilesuff;
 	char *fmt;
-	int verbose, generate, force;
+	int verbose, generate, force, usestdout;
 	struct {
 		int regfile, dirfile, linkfile, specfile;
 		int filename, linkname, typeflag, mode, pmode, owner, powner, mtime, size, content, dev;
@@ -268,7 +268,10 @@ static int untar(struct zstream *z, char **err)
 		*p=0;
 		if(conf.verbose) fprintf(stderr, "tarmd: result cumulative digest sha256: %.64s\n", shastr);
 		if(conf.generate) {
-			printf("%.64s\n", shastr);
+			if(conf.usestdout)
+				fprintf(stderr, "%.64s\n", shastr);
+			else
+				printf("%.64s\n", shastr);
 		} else {
 			if(strcasecmp(shastr, conf.sha)) {
 				if(conf.verbose) fprintf(stderr, "tarmd: SHA256 mismatch!\n");
@@ -320,6 +323,7 @@ int main(int argc, char **argv, char **envp)
 			       " +FMT    Specify what to include in digest\n"
 			       "\nSupports uncompressed, xz, gzip, bzip2 tar archives.\n"
 			       "Expects archive on stdin or as output from CMD.\n"
+			       "If OFILE is '-' then outputs archive to stdout.\n"
 			       "Archive is saved to file $(OFILE).unverified.$$\n"
 			       "If checksum matches the file is renamed to $(OFILE)\n"
 			       "Exit code 0 if digest matched.\n"
@@ -385,6 +389,8 @@ int main(int argc, char **argv, char **envp)
 	conf.ofile=strdup(argv[1]);
 	argc--; argv++;
 
+	if(!strcmp(conf.ofile, "-")) conf.usestdout = 1;
+	
 	if(!conf.force) {
 		struct stat statb;
 		if(stat(conf.ofile, &statb) == 0) {
@@ -427,7 +433,7 @@ int main(int argc, char **argv, char **envp)
 
 	/* fork and exec compression detector: cmd on input, checks for magic */
 	{
-		int fd;
+		int fd = -1;
 		char pidstr[16];
 		
 		pipe(var.detpipe);
@@ -439,7 +445,17 @@ int main(int argc, char **argv, char **envp)
 		if(!conf.ofilesuff) exit(2);
 		sprintf(conf.ofilesuff, "%s%s%s", conf.ofile, SUFFIX, pidstr);
 		
-		fd = open(conf.ofilesuff, O_WRONLY|O_CREAT|O_EXCL, 0644);
+		if(conf.usestdout) {
+			fd = 1;
+		}
+		if(fd < 0) {
+			fd = open(conf.ofilesuff, O_WRONLY|O_CREAT|O_EXCL, 0644);
+		}
+		if(fd < 0) {
+			if(conf.force) {
+				fd = open(conf.ofilesuff, O_WRONLY, 0644);
+			}
+		}
 		if(fd < 0) {
 			fprintf(stderr, "Failed to open output file '%s'\n", conf.ofile);
 			exit(2);
@@ -522,18 +538,20 @@ int main(int argc, char **argv, char **envp)
 		
 		if((rc = untar(&z, &err))) {
 			fprintf(stderr, "tarmd: %s failed\n", err);
-			unlink(conf.ofilesuff);
+			if(!conf.usestdout) unlink(conf.ofilesuff);
 			if(rc < 0) _exit(2);
 			_exit(1);
 		}
 	}
 	
-	if(rename(conf.ofilesuff, conf.ofile)) {
-		fprintf(stderr, "tarmd: rename %s failed, unlinking\n", conf.ofilesuff);
-		if(unlink(conf.ofilesuff)) {
-			fprintf(stderr, "tarmd: unlink %s failed\n", conf.ofilesuff);
+	if(!conf.usestdout) {
+		if(rename(conf.ofilesuff, conf.ofile)) {
+			fprintf(stderr, "tarmd: rename %s failed, unlinking\n", conf.ofilesuff);
+			if(unlink(conf.ofilesuff)) {
+				fprintf(stderr, "tarmd: unlink %s failed\n", conf.ofilesuff);
+			}
+			_exit(2);
 		}
-		_exit(2);
 	}
 
 	return 0;
