@@ -457,7 +457,7 @@ int main(int argc, char **argv, char **envp)
 			}
 		}
 		if(fd < 0) {
-			fprintf(stderr, "Failed to open output file '%s'\n", conf.ofile);
+			fprintf(stderr, "Failed to open output file '%s'\n", conf.ofilesuff);
 			exit(2);
 		}
 		
@@ -538,8 +538,12 @@ int main(int argc, char **argv, char **envp)
 		
 		if((rc = untar(&z, &err))) {
 			fprintf(stderr, "tarmd: %s failed\n", err);
-			if(!conf.usestdout) unlink(conf.ofilesuff);
-			if(rc < 0) _exit(2);
+			if(rc < 0) goto errout;
+			if(!conf.usestdout) {
+				if(unlink(conf.ofilesuff)) {
+					fprintf(stderr, "tarmd: unlink %s failed\n", conf.ofilesuff);
+				}
+			}
 			_exit(1);
 		}
 	}
