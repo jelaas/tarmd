@@ -320,6 +320,8 @@ int main(int argc, char **argv, char **envp)
 			       " +FMT    Specify what to include in digest\n"
 			       "\nSupports uncompressed, xz, gzip, bzip2 tar archives.\n"
 			       "Expects archive on stdin or as output from CMD.\n"
+			       "Archive is saved to file $(OFILE).unverified.$$\n"
+			       "If checksum matches the file is renamed to $(OFILE)\n"
 			       "Exit code 0 if digest matched.\n"
 			       "Exit code 1 if digest did not match.\n"
 			       "Exit code 2 on error.\n"
