@@ -1,6 +1,8 @@
 #ifndef ZSTREAM_H
 #define ZSTREAM_H
 
+#include <sys/types.h>
+
 #ifdef USE_ZLIB
 #include <zlib.h>
 #endif

@@ -465,8 +465,8 @@ int main(int argc, char **argv, char **envp)
 			/* parent */
 			close(fd);
 			close(var.inputfd);
-			if(var.detpid == -1) exit(2);
 			close(var.detpipe[1]);
+			if(var.detpid == -1) goto errout;
 		} else {
 			/* child */
 			char buf[256];
@@ -510,7 +510,7 @@ int main(int argc, char **argv, char **envp)
 		uint8_t BZIP2_MAGIC[2] = { 'B', 'Z' };
 
 		n = read(var.detpipe[0], buf, 6);
-		if(n != 6) _exit(1);
+		if(n != 6) goto errout;
 		
 		var.compressor = "copy";
 		if(memcmp(buf, XZ_MAGIC, 6)==0) var.compressor = "xz";
@@ -528,12 +528,12 @@ int main(int argc, char **argv, char **envp)
 
 		if(zstream(&z, var.compressor)) {
 			fprintf(stderr, "zstream init failed\n");
-			return -1;
+			goto errout;
 		}
 		z.init(&z);
 		if(z.open(&z, var.detpipe[0], "r")) {
 			fprintf(stderr, "zstream open failed\n");
-			return -1;
+			goto errout;
 		}
 		
 		if((rc = untar(&z, &err))) {
@@ -555,4 +555,11 @@ int main(int argc, char **argv, char **envp)
 	}
 
 	return 0;
+errout:
+	if(!conf.usestdout) {
+		if(unlink(conf.ofilesuff)) {
+			fprintf(stderr, "tarmd: unlink %s failed\n", conf.ofilesuff);
+		}
+	}
+	_exit(2);
 }

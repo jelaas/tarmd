@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "zstream.h"
 
 // http://stackoverflow.com/questions/3912157/how-do-i-extract-all-the-data-from-a-bzip2-archive-with-c
@@ -230,7 +233,7 @@ static int copy_open(struct zstream *z, int fd, char *mode)
 
 static ssize_t copy_read(struct zstream *z, void *buf, size_t size)
 {
-	return read(z->copy.fd, buf, size);
+	return readall(z->copy.fd, buf, size);
 }
 
 static ssize_t copy_write(struct zstream *z, void *buf, size_t count)
