@@ -1,6 +1,8 @@
 #ifndef _SHA256_H
 #define _SHA256_H
 
+#include <inttypes.h>
+
 #define SHA256_DIGEST_LENGTH 32
 
 /* Structure to save state of computation between the single steps.  */

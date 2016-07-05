@@ -479,20 +479,20 @@ int main(int argc, char **argv, char **envp)
 			
 			write(var.detpipe[1], buf, n);
 			if(write(var.detpipe[1], buf, n)!=n) {
-				fprintf(stderr, "write(%d, %d) failed\n", var.detpipe[1], n);
+				fprintf(stderr, "write(%d, %zd) failed\n", var.detpipe[1], n);
 			}
 			if(write(fd, buf, n)!=n) {
-				fprintf(stderr, "write(%d, %d) failed\n", fd, n);
+				fprintf(stderr, "write(%d, %zd) failed\n", fd, n);
 			}
 
 			while(1) {
 				n = read(var.inputfd, buf, sizeof(buf));
 				if(n <= 0) break;
 				if(write(var.detpipe[1], buf, n)!=n) {
-					fprintf(stderr, "write(%d, %d) failed\n", var.detpipe[1], n);
+					fprintf(stderr, "write(%d, %zd) failed\n", var.detpipe[1], n);
 				}
 				if(write(fd, buf, n)!=n) {
-					fprintf(stderr, "write(%d, %d) failed\n", fd, n);
+					fprintf(stderr, "write(%d, %zd) failed\n", fd, n);
 				}
 			}
 			close(fd);
