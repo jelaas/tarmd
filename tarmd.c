@@ -436,6 +436,7 @@ int main(int argc, char **argv, char **envp)
 			dup2(fd, 0);
 			dup2(var.cmdpipe[1], 1);
 			execve(cmdargv[0], cmdargv, envp);
+			fprintf(stderr, "tarmd: failed execve %s\n", cmdargv[0]);
 			exit(2);
 		}
 	} else {
