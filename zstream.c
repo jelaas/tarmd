@@ -153,7 +153,7 @@ static int xz_open(struct zstream *z, int fd, char *mode)
 		z->codec.xz.stream.next_out = z->codec.xz.outbuf;
 		z->codec.xz.stream.avail_out = z->codec.xz.bufsize;
 		
-		ret = lzma_stream_decoder(&z->xz.stream, UINT64_MAX, LZMA_CONCATENATED);
+		ret = lzma_stream_decoder(&z->codec.xz.stream, UINT64_MAX, LZMA_CONCATENATED);
 		if (ret == LZMA_OK)
 			return 0;
 		return -1;
