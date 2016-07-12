@@ -194,8 +194,14 @@ static int untar(struct zstream *z, char **err)
 				}
 				siz -= n;
 				if(conf.filter.content) sha256_process_bytes(buf, n, &sha256);
-
+				if(n < sizeof(buf)) {
+					buf[n] = 0;
+				} else {
+					buf[sizeof(buf)-1] = 0;
+				}
 				if(conf.verbose && th->typeflag == 'g')
+					fprintf(stderr, "pax data: %s\n", buf);
+				if(conf.verbose && th->typeflag == 'x')
 					fprintf(stderr, "pax data: %s\n", buf);
 			}
 			
@@ -260,6 +266,10 @@ static int untar(struct zstream *z, char **err)
 
 		if(th->typeflag == 'g') {
 			if(conf.verbose) fprintf(stderr, "skipping pax global header\n");
+			continue;
+		}
+		if(th->typeflag == 'x') {
+			if(conf.verbose) fprintf(stderr, "skipping pax extended header\n");
 			continue;
 		}
 		fprintf(stderr, "tarmd: unhandled: %d/'%c' %s\n", th->typeflag, th->typeflag, md.filename);
