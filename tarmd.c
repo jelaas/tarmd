@@ -199,6 +199,7 @@ static int untar(struct zstream *z, char **err)
 				} else {
 					buf[sizeof(buf)-1] = 0;
 				}
+				/* FIXME: we really should handle pax headers. some values we handle are overridden there */
 				if(conf.verbose && th->typeflag == 'g')
 					fprintf(stderr, "pax data: %s\n", buf);
 				if(conf.verbose && th->typeflag == 'x')
@@ -465,6 +466,7 @@ int main(int argc, char **argv, char **envp)
 			}
 			cmdargv[argc] = (void*)0;
 			
+			/* FIXME/TODO: lookup cmd with help from PATH */
 			
 			/* child */
 			close(var.cmdpipe[0]);
