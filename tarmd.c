@@ -303,7 +303,8 @@ static int untar(struct zstream *z, char **err)
 		} else {
 			if(strcasecmp(shastr, conf.sha)) {
 				if(conf.verbose) fprintf(stderr, "tarmd: SHA256 mismatch!\n");
-				*err = "SHA256";
+				sprintf(buf, "SHA256 %s", shastr);
+				*err = buf;
 				return 1;
 			}
 		}
