@@ -410,9 +410,17 @@ int main(int argc, char **argv, char **envp)
 		conf.filter.content = 1;
 		conf.filter.pmode = 1;
 	}
+	if(argc <= 1) {
+		fprintf(stderr, "tarmd: missing arg\n");
+		exit(1);
+	}
 	if(!conf.generate) {
 		conf.sha=strdup(argv[1]);
 		argc--; argv++;
+	}
+	if(argc <= 1) {
+		fprintf(stderr, "tarmd: missing arg\n");
+		exit(1);
 	}
 	conf.ofile=strdup(argv[1]);
 	argc--; argv++;
